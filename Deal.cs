@@ -66,7 +66,7 @@ public class Deal {
 		StepButton.ButtonPressEvent += NextStep;
 		Stage.Add (StepButton);
 
-		PlayerHand = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
+		PlayerHand   = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
 		OpponentHand = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
 
 		for (int i = 0; i < 5; i++) {
@@ -102,10 +102,10 @@ public class Deal {
 
 
 		Texture Coin = new Texture ("Pixmaps/Coin.png");
-		Coin.SetPosition (35, 410);
+		Coin.SetPosition (35, 408);
 		
 		Text ScoreText = new Text ("Droid Sans Bold 21", "" + Stack.GetAmount());
-		ScoreText.SetPosition (95, 415);
+		ScoreText.SetPosition (95, 413);
 		ScoreText.SetColor (new Clutter.Color (0xff, 0xff, 0xff, 0xff));
 		Stage.Add (ScoreText);
 		Stage.Add(Coin);
@@ -136,29 +136,82 @@ public class Deal {
 			}
 			StepButton.DrawState ();
 			BetButton.Hide ();
+			StepButton.Hide ();
+		
+		
+		int [] CardQuantities = new int[6];
+		
+		for (int i = 0; i < 5; i++) {
+			CardQuantities [PlayerHand.GetCard (i).Type]++;
+		}
+
+		int j = 0;
+		for (int i = 0; i < 6; i++) {
+			if (CardQuantities [i] >= j)
+				j = i;
+		}
+		
+		string[] Types = new string[6];
+		Types[0] = "Blue"; Types[1] = "Purple"; Types[2] = "Red"; Types[3] = "Green"; Types[4] = "Orange"; Types[5] = "Marine";
+		Console.WriteLine ("Type: " + Types[j] + ", Count: " + CardQuantities [j]);
+		
+		if (CardQuantities [j] == 5)
+			Console.WriteLine ("Five of a kind!");
+
+		if (CardQuantities [j] == 4)
+			Console.WriteLine ("Four of a kind");
+
+		if (CardQuantities [j] == 3) {
+			CardQuantities [j] = 0;
+			if (InArray (CardQuantities, 2)) {
+				Console.WriteLine ("Full House");
+			} else {
+				Console.WriteLine ("Three of a kind");
+			}
+		}
+
+		if (CardQuantities [j] == 2) {
+			CardQuantities [j] = 0;
+			if (InArray (CardQuantities, 2)) {
+				Console.WriteLine ("Two Pair");
+			} else {
+				Console.WriteLine ("One Pair");
+			}
+		}
+						
+		if (CardQuantities [j] == 1)
+			Console.WriteLine ("Single");
 			
+				
 		} else if (StepButton.State == 1) {
+		
 
 
 		}
 
 	}
+	
+	
+		public static bool InArray (int [] a, int b) {
+			for (int i = 0; i < a.Length; i++) {
+				if (a[i] == b)
+					return true;
+			}
+			return false;
+		}
 
 	static void Spin (object o, NewFrameArgs args) {
-	
 		for (int i = 0; i < 5; i++) {
 			if (args.FrameNum > 900)
-				OpponentHand.GetCard(i).SetFromFile ("Pixmaps/Back.png");
+				OpponentHand.GetCard(i).SetFromFile ("Pixmaps/Card-Back.png");
 		 	OpponentHand.GetCard(i).SetRotation (RotateAxis.Y, args.FrameNum/10, 0, 0, 0);
 		}
 	}
 
-	static void IncreaseBet (object o, ButtonPressEventArgs args) 
-	{
+	static void IncreaseBet (object o, ButtonPressEventArgs args) {
 		Bet += 1;
-		if (Bet == 5) {
+		if (Bet == 3)
 			BetButton.Hide ();
-		}
 	}
 
 
@@ -172,38 +225,31 @@ public class Deal {
 	}
 */
 
-	static void HandleKeyPress (object o, KeyPressEventArgs args)
-	{
+	static void HandleKeyPress (object o, KeyPressEventArgs args) {
 		 Clutter.Application.Quit ();
 	}
 
-
-
 	public static void ToggleSelection (object o, ButtonPressEventArgs args) {
 
-			Card Card = (Card) o;		
-			float x, y;
-			Card.GetPosition(out x, out y);
-			if (Card.Selected) {
-				for(float h = y; h < y + 35; h += (float) 0.05)
-					Card.SetPosition(x, (int)h);
-				Card.Selected = false;
-			} else {
-				for(float h = y; h > y - 35; h -= (float) 0.05)
-					Card.SetPosition(x, (int)h);
-				Card.Selected = true;
-			}
+		Card Card = (Card) o;		
+		float x, y;
+		Card.GetPosition(out x, out y);	
+		if (Card.Selected) {
+			for(float h = y; h < y + 35; h += (float) 0.05)
+				Card.SetPosition(x, (int)h);
+			Card.Selected = false;
+		} else {
+			for(float h = y; h > y - 35; h -= (float) 0.05)
+				Card.SetPosition(x, (int)h);
+			Card.Selected = true;
+		}
 
-			if (PlayerHand.NumberOfCardsSelected () >= 1)
-				StepButton.SwapState ();
-			else
-				StepButton.DrawState ();
+		if (PlayerHand.NumberOfCardsSelected () >= 1)
+			StepButton.DrawState ();
+		else
+			StepButton.HoldState ();
 
 	}
-
-
-
-
 
 }
 
@@ -223,36 +269,17 @@ public class Card : Texture {
 
 }
 
-public class BetButton : Texture {
-
-	public int Presses;
-	public BetButton () {
-		Presses = 0;
-		SetSize (132, 61);
-		SetPosition (485, 400);
-		SetFromFile ("Pixmaps/Button-Bet.png");
-		Reactive = true;
-		ButtonPressEvent += Pressed;
-	}
-	
-	public void Pressed (object o, ButtonPressEventArgs args) {
-		Presses++;
-	}
-
-}
-
 public class Deck {
 
 	private Card [] Cards;
 	private int j;
 
 	public Deck () {
-		Cards = new Card [25];
+		Cards = new Card [30];
 		Random r = new Random (Environment.TickCount);
 		j = 0;
-		for (int i = 0; i < 25; i++) {
-			Cards [i] = new Card (r.Next (5));
-		}
+		for (int i = 0; i < 30; i++)
+			Cards [i] = new Card (r.Next (6));
 	}
 
 	public Card Draw () {
@@ -263,12 +290,12 @@ public class Deck {
 	}
 
 	public void Reset () {
-		Cards = new Card [25];
+		Cards = new Card [30];
 		Random r = new Random (Environment.TickCount);
 		j = 0;
-		for (int i = 0; i < 25; i++) {
-			Cards [i] = new Card (r.Next (5));
-		}		
+		for (int i = 0; i < 30; i++)
+			Cards [i] = new Card (r.Next (6));
+		
 	}
 
 }
@@ -295,7 +322,6 @@ public class Hand {
 	}
 
 	public int NumberOfCardsSelected () {
-
 		int j = 0;
 		for (int i = 0; i < 5; i++) {
 			if (Cards [i].Selected)
@@ -336,18 +362,37 @@ public class StepButton : Texture {
 		State = 0;
 		SetSize (132, 61);
 		SetPosition (635, 400);
-		SetFromFile ("Pixmaps/Button-Draw.png");
+		SetFromFile ("Pixmaps/Button-Hold.png");
 		Reactive = true;
 	}
 	
+	public void HoldState () {
+			State = 0;
+			SetFromFile ("Pixmaps/Button-Hold.png");
+	}
+
 	public void DrawState () {
 			State = 0;
 			SetFromFile ("Pixmaps/Button-Draw.png");
 	}
+	
+}
 
-	public void SwapState () {
-			State = 0;
-			SetFromFile ("Pixmaps/Button-Swap.png");
+public class BetButton : Texture {
+
+	public int Presses;
+
+	public BetButton () {
+		Presses = 0;
+		SetSize (132, 61);
+		SetPosition (485, 400);
+		SetFromFile ("Pixmaps/Button-Raise.png");
+		Reactive = true;
+		ButtonPressEvent += Pressed;
 	}
 	
+	public void Pressed (object o, ButtonPressEventArgs args) {
+		Presses++;
+	}
+
 }
