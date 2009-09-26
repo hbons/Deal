@@ -27,26 +27,27 @@ using Clutter;
 
 public class Deal {
 
-	static Texture[] Card;
+	static Hand PlayerHand;
 	static int[] CardPositionsX;
 	static Stage Stage;
+	static Deck Deck;
+	static StepButton StepButton;
+	static BetButton BetButton;
+	static Stack Stack;
+	static int Step;
 
 	static void Main () {
 
 		Clutter.Application.Init ();
-
+		Step = 1;
 		CardPositionsX = new int[5];
 		CardPositionsX[0] = 100;
 		CardPositionsX[1] = 250;
 		CardPositionsX[2] = 400;
 		CardPositionsX[3] = 550;
 		CardPositionsX[4] = 700;
-		Card = new Texture[10];
-
+		
 		Clutter.Color White = new Clutter.Color (0xff, 0xff, 0xff, 0xff);
-
-		Deck Deck = new Deck ();
-		Stack Stack = new Stack ();
 
 		// Stage
 		Stage = Stage.Default;	 
@@ -59,59 +60,31 @@ public class Deal {
 		Background.SetSize (800, 480);
 		Stage.Add (Background);
 
-		// Score
-		Texture Coin = new Texture ("Pixmaps/Coin.png");
-		Coin.SetPosition (20, 410);
-		Stage.Add (Coin);
-		Text ScoreText = new Text ("Droid Sans Bold 21", "" + Stack.getAmount ());
-		ScoreText.SetPosition (80, 415);
-		ScoreText.SetColor (White);
-		Stage.Add (ScoreText);
+		StepButton = new StepButton ();
+		StepButton.ButtonPressEvent += NextStep;
+		Stage.Add (StepButton);
 
-		// Deal button
-/*		Rectangle DealButton = new Rectangle ();
-		DealButton.Color = new Clutter.Color (0x3f, 0x5d, 0x00, 0xff);
-		DealButton.SetSize (166, 82);
-		DealButton.SetPosition (800 - 4 - 166, 480 - 4 - 82);
-
-		Stage.Add (DealButton);
-*/
-		Text DealText = new Text ("Droid Sans Bold 21", "Deal");
-		DealText.SetPosition (675, 415);
-		DealText.SetColor (White);
-		Stage.Add (DealText);
-
-		// Bet button
-/*		Rectangle BetButton = new Rectangle ();
-		BetButton.Color = new Clutter.Color (0x3f, 0x5d, 0x00, 0xff);
-		BetButton.SetSize (166, 82);
-		BetButton.SetPosition (460, 394);
+		BetButton = new BetButton ();
 		Stage.Add (BetButton);
-*/
-		Text BetText = new Text ("Droid Sans Bold 21", "Bet");
-		BetText.SetPosition (510, 415);
-		BetText.SetColor (White);
-		Stage.Add (BetText);
+
+		Stack = new Stack ();
+		Stage.Add (Stack);
+
+		Deck = new Deck ();
+		PlayerHand = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
 
 		for (int i = 0; i < 5; i++) {
-			Card[i] = new Texture ("Pixmaps/" + (Deck.Draw () + 1) + ".png");
-			Card[i].SetSize (130, 150);
-			if (i < 5)
-				Card[i].SetPosition (CardPositionsX[i], -200);
-			else
-				Card[i].SetPosition (-200, 280);
+			PlayerHand.GetCard (i).SetPosition (CardPositionsX[i], 300);
+			Stage.Add (PlayerHand.GetCard (i));
+		}
 
-			Card[i].SetAnchorPoint (65, 75);
-			Stage.Add (Card[i]);
 
 			Timeline timeline2 = new Timeline (500);
 			timeline2.Loop = false;
-			timeline2.NewFrame += SlideIn;
+//			timeline2.NewFrame += SlideIn;
 			timeline2.Start ();	
 
-			Card[i].ButtonPressEvent += HandleButtonPress;
 
-		}
 
 
 		Rectangle MatchBackground = new Rectangle ();
@@ -125,9 +98,6 @@ public class Deal {
 		MatchType.SetColor (White);
 		Stage.Add (MatchType);
 
-		Stage.ButtonPressEvent += HandleButtonPressEvent;
-
-
 		Timeline timeline = new Timeline (2700);
 		timeline.Loop = true;
 		timeline.NewFrame += Spin;
@@ -138,40 +108,47 @@ public class Deal {
 
   }
 
-	static void Spin (object o, NewFrameArgs args) 
-	{
-		for (int i = 0; i < 5; i++) {
-	 		Card[i].SetRotation (RotateAxis.Y, args.FrameNum / 3, 0, 0, 0);
+
+	static void NextStep (object o, ButtonPressEventArgs args) {
+		Console.WriteLine ("Signal Deal");
+
+		if (Step == 1) {
+			for (int i = 0; i < 5; i++) {
+				if (PlayerHand.GetCard (i).Selected) {
+					PlayerHand.GetCard (i).HideAll ();
+					PlayerHand.Replace (i, Deck.Draw ());
+					PlayerHand.GetCard (i).SetPosition (CardPositionsX[i], 300);
+					Stage.Add (PlayerHand.GetCard (i));
+				}
+			}
+			//Step++;
+			
+		} else if (Step == 2) {
+
+			// Check hand score
+
+		
+
 		}
 
 	}
 
+	static void Spin (object o, NewFrameArgs args) 
+	{
+		for (int i = 0; i < 5; i++)
+	 		PlayerHand.GetCard(i).SetRotation (RotateAxis.Y, args.FrameNum / 3, 0, 0, 0);
+	}
 
+
+/*
 	static void SlideIn (object o, NewFrameArgs args) 
 	{
 		for (int i = 0; i < 5; i++) {
-	 		Card[i].SetPosition( CardPositionsX[i], -200 + args.FrameNum);
-		}
+	 		PlayerHand.GetCard(i).SetPosition( CardPositionsX[i], -200 + args.FrameNum);
+}
 
 	}
-
-	static void HandleButtonPressEvent (object o, ButtonPressEventArgs args) 
-	{
-		Actor actor = Stage.Default.GetActorAtPos (Clutter.PickMode.All, args.Event.X, args.Event.Y);
-	//	float x, y;
-	//	actor.GetPosition(out x, out y);
-		Console.WriteLine ((float)args.Event.X + ", " + (float)args.Event.Y);
-		
-	}
-
-	static void HandleButtonPress (object o, ButtonPressEventArgs args)
-	{
-		Actor actor = Stage.Default.GetActorAtPos (Clutter.PickMode.All, args.Event.X, args.Event.Y);
-		float x, y;
-		actor.GetPosition(out x, out y);
-		Console.WriteLine (x + " - " + y);
-
-	}
+*/
 
 	static void HandleKeyPress (object o, KeyPressEventArgs args)
 	{
@@ -181,63 +158,153 @@ public class Deal {
 }
 
 
-public class Deck {
 
-	private int[] Cards;
 
-	public Deck () {
-		Cards = new int[5];
+public class Card : Texture {
+
+	public bool Selected;
+	public int Type;
+
+	public Card (int type) {
+		Type = type;
+		Selected = false;
+		SetSize (130, 150);
+		SetAnchorPoint (65, 75);
+		SetFromFile("Pixmaps/" + (type + 1) + ".png");
+		ButtonPressEvent += ToggleSelection;
+		Reactive = true;
+
+	}
+	
+	public void ToggleSelection (object o, ButtonPressEventArgs args) {
+		float x, y;
+		GetPosition(out x, out y);
+		if (Selected) {
+			for(float i = y; i < y + 100; i += (float) 0.05)
+				SetPosition(x, (int)i);
+			Selected = false;
+		} else {
+			for(float i = y; i > y - 100; i -= (float) 0.05)
+				SetPosition(x, (int)i);
+			Selected = true;
+		}
 	}
 
-	public int Draw () {
-		Random random = new Random (Environment.TickCount);
-		int Card = random.Next (5);
-		Cards[Card]--;
+}
+
+public class StepButton : Texture {
+
+	public int State;
+
+	public StepButton () {
+		State = 0;
+		SetSize (100, 50);
+		SetPosition (675, 415);
+		SetFromFile ("Pixmaps/back.png");
+		Reactive = true;
+	}
+	
+	public void ChangeState () {
+		if (State == 0)
+			State = 1;
+		else
+			State = 0;
+	}
+
+}
+
+public class BetButton : Texture {
+
+	public int Presses;
+
+	public BetButton () {
+		Presses = 0;
+		SetSize (100, 50);
+		SetPosition (510, 415);
+		SetFromFile ("Pixmaps/back.png");
+		Reactive = true;
+		ButtonPressEvent += Pressed;
+	}
+	
+	public void Pressed (object o, ButtonPressEventArgs args) {
+		Presses++;
+	}
+
+}
+
+
+
+
+
+public class Deck {
+
+	private Card [] Cards;
+	private int j;
+
+	public Deck () {
+		Cards = new Card [25];
+		Random r = new Random (Environment.TickCount);
+		j = 0;
+		for (int i = 0; i < 25; i++) {
+			Cards [i] = new Card (r.Next (5));
+		}
+	}
+
+	public Card Draw () {
+		Card Card = Cards [j];
+		Cards [j] = null;
+		j++;
 		return Card;
 	}
 
-	public void Insert (int Card) {
-		Cards[Card]++;
-	}
+//	public void Insert (int Card) {
+//		Cards[Card]++;
+//	}
 
-	public void Reset () {
-		Cards[0] = 5;	// Girls
-		Cards[1] = 5;	// Penguins
-		Cards[2] = 5;	// Cats
-		Cards[3] = 5;	// Birds
-		Cards[4] = 5;	// Hearts
-	}
+//	public void Reset () {
+//	}
 
 }
+
 
 public class Hand {
 
-	private int[] Cards;
+	private Card [] Cards;
 
-	public Hand () {
-		Cards = new int[5];
+	public Hand (Card a, Card b, Card c, Card d, Card e) {
+		Cards = new Card [5];
+		Cards [0] = a;
+		Cards [1] = b;
+		Cards [2] = c;
+		Cards [3] = d;
+		Cards [4] = e;
 	}
 
-	public void Remove (int Card) {
-		Cards[Card]--;
+	public void Replace (int Position, Card Card) {
+		Cards [Position] = Card;
 	}
 
-	public void Insert (int Card) {
-		Cards[Card]++;
-	}
-
-	public void Empty () {
-		Cards = new int[5];
+	public Card GetCard (int Position) {
+		return Cards [Position];
 	}
 
 }
 
-public class Stack {
+public class Stack : Group {
 
 	private int Amount;  
 
 	public Stack () {
 		Amount = 1000;
+
+		Texture Coin = new Texture ("Pixmaps/Coin.png");
+		Coin.SetPosition (20, 410);
+		Add (Coin);
+		Text ScoreText = new Text ("Droid Sans Bold 21", "" + Amount);
+		ScoreText.SetPosition (80, 415);
+		ScoreText.SetColor (new Clutter.Color (0xff, 0xff, 0xff, 0xff));
+		Add (ScoreText);
+
 	}
 
 	public void Increase (int amount) {
