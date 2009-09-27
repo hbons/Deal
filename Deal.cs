@@ -27,7 +27,7 @@ using Clutter;
 
 public class Deal {
 
-	static int[] CardPositionsX;
+	static int[] CardPositionsX = { 100, 250, 400, 550, 700 };
 	static Stage Stage;
 	static Deck Deck;
 	static Hand PlayerHand;
@@ -40,13 +40,6 @@ public class Deal {
 	static void Main () {
 
 		Clutter.Application.Init ();
-
-		CardPositionsX = new int[5];
-		CardPositionsX[0] = 100;
-		CardPositionsX[1] = 250;
-		CardPositionsX[2] = 400;
-		CardPositionsX[3] = 550;
-		CardPositionsX[4] = 700;
 
 		Deck = new Deck ();
 		Stack = new Stack ();
@@ -84,7 +77,6 @@ public class Deal {
 		timeline2.Start ();	
 
 
-
 /*
 		Rectangle MatchBackground = new Rectangle ();
 		MatchBackground.Color = new Clutter.Color (0x35, 0x3c, 0x41, 0xff);
@@ -98,9 +90,6 @@ public class Deal {
 		Stage.Add (MatchType);
 
 */
-
-
-
 		Texture Coin = new Texture ("Pixmaps/Coin.png");
 		Coin.SetPosition (35, 408);
 		
@@ -120,7 +109,6 @@ public class Deal {
 
   }
 
-
 	static void NextStep (object o, ButtonPressEventArgs args) {
 		Console.WriteLine ("Signal Deal");
 
@@ -137,68 +125,24 @@ public class Deal {
 			StepButton.DrawState ();
 			BetButton.Hide ();
 			StepButton.Hide ();
+			for (int i = 0; i < 5; i++) {
+				PlayerHand.GetCard (i).Reactive = false;
+			}		
 		
-		
-		int [] CardQuantities = new int[6];
-		
-		for (int i = 0; i < 5; i++) {
-			CardQuantities [PlayerHand.GetCard (i).Type]++;
-		}
-
-		int j = 0;
-		for (int i = 0; i < 6; i++) {
-			if (CardQuantities [i] >= j)
-				j = i;
-		}
-		
-		string[] Types = new string[6];
-		Types[0] = "Blue"; Types[1] = "Purple"; Types[2] = "Red"; Types[3] = "Green"; Types[4] = "Orange"; Types[5] = "Marine";
-		Console.WriteLine ("Type: " + Types[j] + ", Count: " + CardQuantities [j]);
-		
-		if (CardQuantities [j] == 5)
-			Console.WriteLine ("Five of a kind!");
-
-		if (CardQuantities [j] == 4)
-			Console.WriteLine ("Four of a kind");
-
-		if (CardQuantities [j] == 3) {
-			CardQuantities [j] = 0;
-			if (InArray (CardQuantities, 2)) {
-				Console.WriteLine ("Full House");
-			} else {
-				Console.WriteLine ("Three of a kind");
-			}
-		}
-
-		if (CardQuantities [j] == 2) {
-			CardQuantities [j] = 0;
-			if (InArray (CardQuantities, 2)) {
-				Console.WriteLine ("Two Pair");
-			} else {
-				Console.WriteLine ("One Pair");
-			}
-		}
-						
-		if (CardQuantities [j] == 1)
-			Console.WriteLine ("Single");
+			CompareHands ();
 			
-				
 		} else if (StepButton.State == 1) {
 		
-
-
 		}
 
 	}
 	
-	
-		public static bool InArray (int [] a, int b) {
-			for (int i = 0; i < a.Length; i++) {
-				if (a[i] == b)
-					return true;
-			}
-			return false;
-		}
+	public static bool InArray (int [] a, int b) {
+		for (int i = 0; i < a.Length; i++)
+			if (a [i] == b)
+				return true;
+		return false;
+	}
 
 	static void Spin (object o, NewFrameArgs args) {
 		for (int i = 0; i < 5; i++) {
@@ -214,7 +158,6 @@ public class Deal {
 			BetButton.Hide ();
 	}
 
-
 /*
 	static void SlideIn (object o, NewFrameArgs args) 
 	{
@@ -226,7 +169,7 @@ public class Deal {
 */
 
 	static void HandleKeyPress (object o, KeyPressEventArgs args) {
-		 Clutter.Application.Quit ();
+		 Clutter.Main.Quit ();
 	}
 
 	public static void ToggleSelection (object o, ButtonPressEventArgs args) {
@@ -250,6 +193,56 @@ public class Deal {
 			StepButton.HoldState ();
 
 	}
+
+
+	static void CompareHands () {
+
+		int [] CardQuantities = new int[6];
+		
+		for (int i = 0; i < 5; i++) {
+			CardQuantities [PlayerHand.GetCard (i).Type]++;
+		}
+
+		int j = 0;
+		for (int i = 0; i < 6; i++) {
+			if (CardQuantities [i] >= j)
+				j = i;
+		}
+		
+		string[] Types = { "Blue", "Purple", "Red", "Green", "Orange", "Marine" };
+		Console.WriteLine ("Type: " + Types[j] + ", Count: " + CardQuantities [j]);
+		
+		if (CardQuantities [j] == 1)
+			Console.WriteLine ("Single");
+			
+		if (CardQuantities [j] == 2) {
+			CardQuantities [j] = 0;
+			if (InArray (CardQuantities, 2)) {
+				Console.WriteLine ("Two Pair");
+			} else {
+				Console.WriteLine ("One Pair");
+			}
+		}
+			
+		if (CardQuantities [j] == 3) {
+			CardQuantities [j] = 0;
+			if (InArray (CardQuantities, 2)) {
+				Console.WriteLine ("Full House");
+			} else {
+				Console.WriteLine ("Three of a kind");
+			}
+		}
+					
+		if (CardQuantities [j] == 4)
+			Console.WriteLine ("Four of a kind");
+			
+		if (CardQuantities [j] == 5)
+			Console.WriteLine ("Five of a kind!");
+
+	}
+
+
+
 
 }
 
@@ -275,11 +268,7 @@ public class Deck {
 	private int j;
 
 	public Deck () {
-		Cards = new Card [30];
-		Random r = new Random (Environment.TickCount);
-		j = 0;
-		for (int i = 0; i < 30; i++)
-			Cards [i] = new Card (r.Next (6));
+		Reset ();
 	}
 
 	public Card Draw () {
@@ -295,7 +284,6 @@ public class Deck {
 		j = 0;
 		for (int i = 0; i < 30; i++)
 			Cards [i] = new Card (r.Next (6));
-		
 	}
 
 }
@@ -306,11 +294,7 @@ public class Hand {
 
 	public Hand (Card a, Card b, Card c, Card d, Card e) {
 		Cards = new Card [5];
-		Cards [0] = a;
-		Cards [1] = b;
-		Cards [2] = c;
-		Cards [3] = d;
-		Cards [4] = e;
+		Cards [0] = a; Cards [1] = b; Cards [2] = c; Cards [3] = d; Cards [4] = e;
 	}
 
 	public void Replace (int Position, Card Card) {
@@ -359,10 +343,9 @@ public class StepButton : Texture {
 	public int State;
 
 	public StepButton () {
-		State = 0;
 		SetSize (132, 61);
 		SetPosition (635, 400);
-		SetFromFile ("Pixmaps/Button-Hold.png");
+		HoldState ();
 		Reactive = true;
 	}
 	
