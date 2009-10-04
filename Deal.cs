@@ -1,381 +1,479 @@
-/*
- * Deal.
- *
- * A very simple but fun card game for mobile devices.
- *
- * Authored By Hylke Bons  <hylke.bons@intel.com>
- *
- * Copyright (C) 2009 Intel
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public
- * License version 2 as published by the Free Software Foundation.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
- */
-
-using System;
 using Clutter;
+using GLib;
+using System;
 
-public class Deal {
+public class Deal
+{
 
-	static int[] CardPositionsX = { 100, 250, 400, 550, 700 };
+	static int [] CardPositionsX = { 100, 250, 400, 550, 700 };
+	static int [] CoinPositionsX = { 225, 250, 275, 300, 325 };
 	static Stage Stage;
 	static Deck Deck;
 	static Hand PlayerHand;
 	static Hand OpponentHand;
-	static StepButton StepButton;
-	static BetButton BetButton;
 	static Stack Stack;
 	static int Bet;
+	static StepButton StepButton;
+	static BetButton BetButton;
+	static DealButton DealButton;
+	static Text ScoreText;
+	static Coin [] Coins;
 
-	static void Main () {
+	static void Main ()
+	{
 
 		Clutter.Application.Init ();
 
-		Deck = new Deck ();
-		Stack = new Stack ();
-
-		Stage = Stage.Default;
+		Stage = new Stage ();
 		Stage.Title = "Deal!";
-		Stage.UserResizable = false;
-		Stage.SetSize (800, 480);
 		Stage.Add (new Texture ("Pixmaps/Table.png"));
+		Stage.SetSize (800, 480);
 		Stage.KeyPressEvent += HandleKeyPress;
 
+		Texture C = new Texture ("Pixmaps/Coin.png");
+		C.SetSize (50, 50);
+		C.SetPosition (35, 405);
+		Stage.Add (C);
+
+		Bet = 0;
 		BetButton = new BetButton ();
 		BetButton.ButtonPressEvent += IncreaseBet;
 		Stage.Add (BetButton);
 
+		DealButton = new DealButton ();
+		DealButton.ButtonPressEvent += NewGame;
+		Stage.Add (DealButton);
+
 		StepButton = new StepButton ();
 		StepButton.ButtonPressEvent += NextStep;
 		Stage.Add (StepButton);
+ 
+		Stack = new Stack ();
+		Stack.Decrease (20);
+		ScoreText = new Text ("Droid Sans Bold 21", "" + Stack.GetAmount());
+		ScoreText.SetColor (new Clutter.Color (0xff, 0xff, 0xff, 0xff));
+		ScoreText.SetPosition (100, 413);
+		Stage.Add (ScoreText);
+
+		Coins = new Coin [5];
+		Coins [0] = new Coin ();
+		Coins [1] = new Coin ();
+		Coins [2] = new Coin ();
+		Coins [3] = new Coin ();
+		Coins [4] = new Coin ();
+		for (int i = 0; i < 5; i++) {
+			Coins [i].SetPosition (35, 405);
+			Stage.Add (Coins [i]);
+		}
+
+		Deck = new Deck ();
 
 		PlayerHand   = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
 		OpponentHand = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
 
+		SetupAnimation ();
+
+		Stage.ShowAll();
+
+		Clutter.Application.Run (); 
+
+	}
+
+	static void NewGame (object o, ButtonPressEventArgs args)
+	{
+
+		Bet = 0;
+
+		DealButton.Opacity = 0;
+
+		BetButton.Opacity = 255;
+		BetButton.Reactive = true;
+		BetButton.Show ();
+
+		StepButton.HoldState ();
+		StepButton.Show ();
+
+		// Needs to be replaced with "return to deck" animation
 		for (int i = 0; i < 5; i++) {
-			PlayerHand.GetCard (i).SetPosition (CardPositionsX[i], 300);
-			OpponentHand.GetCard (i).SetPosition (CardPositionsX[i], 100);
+			PlayerHand.GetCard (i).Hide ();
+			OpponentHand.GetCard (i).Hide ();
+		}
+
+		Deck = new Deck ();
+
+		PlayerHand   = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
+		OpponentHand = new Hand (Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw (), Deck.Draw ());
+
+		SetupAnimation ();
+
+	}
+
+	static void SetupAnimation ()
+	{
+
+		for (int i = 0; i < 5; i++)
+		{
 			PlayerHand.GetCard (i).ButtonPressEvent += ToggleSelection;
 			Stage.Add (PlayerHand.GetCard (i));
 			Stage.Add (OpponentHand.GetCard (i));
+			OpponentHand.GetCard (i).TurnToBack ();
+			AnimateProperty (PlayerHand.GetCard (i),   1000, "y", 300,                (uint) (i * 250));
+			AnimateProperty (PlayerHand.GetCard (i),   1000, "x", CardPositionsX [i], (uint) (i * 250));
+			AnimateProperty (OpponentHand.GetCard (i), 500,  "y", 100,                (uint) 5250);
+			AnimateProperty (OpponentHand.GetCard (i), 500,  "x", CardPositionsX [i], (uint) 1750);
 		}
 
-
-		Timeline timeline2 = new Timeline (500);
-		timeline2.Loop = false;
-//		timeline2.NewFrame += SlideIn;
-		timeline2.Start ();	
-
-
-/*
-		Rectangle MatchBackground = new Rectangle ();
-		MatchBackground.Color = new Clutter.Color (0x35, 0x3c, 0x41, 0xff);
-		MatchBackground.SetSize (800, 60);
-		MatchBackground.SetPosition (0, 70);
-		Stage.Add (MatchBackground);
-		Text MatchType = new Text ("Droid Sans Bold 21", "Full House!");
-		MatchType.SetPosition (400, 100);
-		MatchType.SetAnchorPoint (MatchType.Width / 2 + 1, MatchType.Height / 2);
-		MatchType.SetColor (White);
-		Stage.Add (MatchType);
-
-*/
-		Texture Coin = new Texture ("Pixmaps/Coin.png");
-		Coin.SetPosition (35, 408);
-		
-		Text ScoreText = new Text ("Droid Sans Bold 21", "" + Stack.GetAmount());
-		ScoreText.SetPosition (95, 413);
-		ScoreText.SetColor (new Clutter.Color (0xff, 0xff, 0xff, 0xff));
-		Stage.Add (ScoreText);
-		Stage.Add(Coin);
-
-		Timeline timeline = new Timeline (1800);
-		timeline.Loop = false;
-		timeline.NewFrame += Spin;
-		timeline.Start ();
-
-		Stage.ShowAll();
-		Clutter.Application.Run (); 
-
-  }
-
-	static void NextStep (object o, ButtonPressEventArgs args) {
-		Console.WriteLine ("Signal Deal");
-
-		if (StepButton.State == 0) {
-			for (int i = 0; i < 5; i++) {
-				if (PlayerHand.GetCard (i).Selected) {
-					PlayerHand.GetCard (i).HideAll ();
-					PlayerHand.Replace (i, Deck.Draw ());
-					PlayerHand.GetCard (i).SetPosition (CardPositionsX[i], 300);
-					Stage.Add (PlayerHand.GetCard (i));
-
-				}
-			}
-			StepButton.DrawState ();
-			BetButton.Hide ();
-			StepButton.Hide ();
-			for (int i = 0; i < 5; i++) {
-				PlayerHand.GetCard (i).Reactive = false;
-			}		
-		
-			CompareHands ();
-			
-		} else if (StepButton.State == 1) {
-		
-		}
+		for (int i = 0; i < 2; i++)
+			AnimateProperty (Coins [i], 500, "x", CoinPositionsX[i], (uint) (i * 250));	
 
 	}
-	
-	public static bool InArray (int [] a, int b) {
+
+	static void NextStep (object o, ButtonPressEventArgs args)
+	{
+
+		int j = 0;
+		for (int i = 0; i < 5; i++)
+		{
+			// Replace the selected cards
+			if (PlayerHand.GetCard (i).Selected) {
+				j++;
+			  PlayerHand.GetCard (i).TurnToBack ();
+			  // Remove card from table
+				AnimateProperty (PlayerHand.GetCard (i), 1000, "y", -200, 250);
+				// Get a new card
+				PlayerHand.Replace (i, Deck.Draw ());
+				PlayerHand.GetCard (i).SetPosition (400, -100);
+				// Return new card to the right position
+				AnimateProperty (PlayerHand.GetCard (i), 1000, "y", 300,                (uint) (750 + j * 250));
+				AnimateProperty (PlayerHand.GetCard (i), 1000, "x", CardPositionsX [i], (uint) (750 + j * 250));
+				Stage.Add (PlayerHand.GetCard (i));
+			}
+
+		}
+
+		for (int i = 0; i < 5; i++)
+			OpponentHand.GetCard (i).TurnToFront ((uint) (1000 + j * 500));
+
+		Timeline [] Timelines = new Timeline [5];
+		for (int i = 0; i < 4; i++)
+			 Timelines [i] = AnimateProperty (Coins [i], 500, "x", 35, (uint) ((1500 + (j * 500)) + (i * 250)));
+
+		Timeline Timeline1 = AnimateProperty (Coins [4], 500, "x", 35, (uint) ((1500 + (j * 500)) + (4 * 250)));
+		Timeline1.Completed += delegate { DealButton.Opacity = 255; };
+
+		StepButton.SwapState ();
+		BetButton.Hide ();
+		StepButton.Hide ();
+
+		foreach (Card Card in PlayerHand.Cards)
+			Card.Reactive = false;
+
+	}
+
+	public static void ToggleSelection (object o, ButtonPressEventArgs args)
+	{
+
+		Card Card = (Card) o;
+		float x, y;
+		Card.GetPosition(out x, out y);	
+		if (Card.Selected) {
+			AnimateProperty (Card, 200, "y", y + 35, 0); // Deselect the card
+			Card.Selected = false;
+		} else {
+			AnimateProperty (Card, 200, "y", y - 35, 0); // Select the card
+			Card.Selected = true;
+		}
+
+		if (PlayerHand.NumberOfCardsSelected () >= 1)
+			StepButton.SwapState ();
+		else
+			StepButton.HoldState ();
+
+	}
+
+	static void IncreaseBet (object Object, ButtonPressEventArgs ButtonPressEventArgs)
+	{
+		if (++Bet == 3) {
+			Timeline Timeline = new Timeline (255);
+			Timeline.NewFrame += delegate (object o, NewFrameArgs args) { 
+			BetButton.Opacity = (byte) (255 - args.FrameNum); };
+			Timeline.Start ();
+			BetButton.Reactive = false;
+		}
+		AnimateProperty (Coins [Bet + 1], 500, "x", CoinPositionsX [Bet + 1], 0);
+		Stack.Decrease (10);
+		ScoreText.Value = "" + Stack.GetAmount ();
+	}
+
+	static void HandleKeyPress (object o, KeyPressEventArgs args)
+	{
+		 Clutter.Application.Quit ();
+	}
+
+	public static Timeline AnimateProperty (Actor Actor, uint Time, string Property, float To, uint Delay)
+	{
+		Timeline Timeline = new Timeline (Time);
+		Timeline.Delay = Delay;
+		string [] Properties = new string[1];
+		Properties [0] = Property;
+		Actor.AnimateWithTimelinev (6, Timeline, Properties, new GLib.Value ((float) To));
+		return Timeline;
+	}
+
+	public static bool InArray (int [] a, int b)
+	{
 		for (int i = 0; i < a.Length; i++)
 			if (a [i] == b)
 				return true;
 		return false;
 	}
 
-	static void Spin (object o, NewFrameArgs args) {
-		for (int i = 0; i < 5; i++) {
-			if (args.FrameNum > 900)
-				OpponentHand.GetCard(i).SetFromFile ("Pixmaps/Card-Back.png");
-		 	OpponentHand.GetCard(i).SetRotation (RotateAxis.Y, args.FrameNum/10, 0, 0, 0);
-		}
-	}
-
-	static void IncreaseBet (object o, ButtonPressEventArgs args) {
-		Bet += 1;
-		if (Bet == 3)
-			BetButton.Hide ();
-	}
-
-/*
-	static void SlideIn (object o, NewFrameArgs args) 
-	{
-		for (int i = 0; i < 5; i++) {
-	 		PlayerHand.GetCard(i).SetPosition( CardPositionsX[i], -200 + args.FrameNum);
 }
 
-	}
-*/
-
-	static void HandleKeyPress (object o, KeyPressEventArgs args) {
-		 Clutter.Main.Quit ();
-	}
-
-	public static void ToggleSelection (object o, ButtonPressEventArgs args) {
-
-		Card Card = (Card) o;		
-		float x, y;
-		Card.GetPosition(out x, out y);	
-		if (Card.Selected) {
-			for(float h = y; h < y + 35; h += (float) 0.05)
-				Card.SetPosition(x, (int)h);
-			Card.Selected = false;
-		} else {
-			for(float h = y; h > y - 35; h -= (float) 0.05)
-				Card.SetPosition(x, (int)h);
-			Card.Selected = true;
-		}
-
-		if (PlayerHand.NumberOfCardsSelected () >= 1)
-			StepButton.DrawState ();
-		else
-			StepButton.HoldState ();
-
-	}
-
-
-	static void CompareHands () {
-
-		int [] CardQuantities = new int[6];
-		
-		for (int i = 0; i < 5; i++) {
-			CardQuantities [PlayerHand.GetCard (i).Type]++;
-		}
-
-		int j = 0;
-		for (int i = 0; i < 6; i++) {
-			if (CardQuantities [i] >= j)
-				j = i;
-		}
-		
-		string[] Types = { "Blue", "Purple", "Red", "Green", "Orange", "Marine" };
-		Console.WriteLine ("Type: " + Types[j] + ", Count: " + CardQuantities [j]);
-		
-		if (CardQuantities [j] == 1)
-			Console.WriteLine ("Single");
-			
-		if (CardQuantities [j] == 2) {
-			CardQuantities [j] = 0;
-			if (InArray (CardQuantities, 2)) {
-				Console.WriteLine ("Two Pair");
-			} else {
-				Console.WriteLine ("One Pair");
-			}
-		}
-			
-		if (CardQuantities [j] == 3) {
-			CardQuantities [j] = 0;
-			if (InArray (CardQuantities, 2)) {
-				Console.WriteLine ("Full House");
-			} else {
-				Console.WriteLine ("Three of a kind");
-			}
-		}
-					
-		if (CardQuantities [j] == 4)
-			Console.WriteLine ("Four of a kind");
-			
-		if (CardQuantities [j] == 5)
-			Console.WriteLine ("Five of a kind!");
-
-	}
-
-
-
-
-}
-
-public class Card : Texture {
+public class Card : Texture
+{
 
 	public bool Selected;
 	public int Type;
+	private Timeline Timeline;
 
-	public Card (int type) {
+	public Card (int type)
+	{
 		Type = type;
 		Selected = false;
-		SetSize (130, 150);
-		SetAnchorPoint (65, 75);
-		SetFromFile("Pixmaps/" + (type + 1) + ".png");
+		SetPosition (400, -100);
+		SetSize (130, 152);
+		SetAnchorPoint (65, 76);
 		Reactive = true;
+		FrontSide ();
+	}
+
+	private void BackSide ()
+	{
+		SetFromFile("Pixmaps/Card-Back.png");
+	}
+
+	private void FrontSide ()
+	{
+		SetFromFile("Pixmaps/" + Type + ".png");
+	}
+
+	public void TurnWithoutTexture ()
+	{
+			SetRotation(RotateAxis.Y, 180, 0, 0, 0);
+	}
+
+	public void TurnToBack ()
+	{
+		Timeline = new Timeline (180);
+		Timeline.NewFrame += delegate (object o, NewFrameArgs args) { 
+			SetRotation(RotateAxis.Y, args.FrameNum, 0, 0, 0);
+			if (args.FrameNum > 90)
+				BackSide (); };
+		Timeline.Start ();
+	}
+
+	public void TurnToFront ()
+	{
+		Timeline = new Timeline (180);
+		Timeline.NewFrame += delegate (object o, NewFrameArgs args) { 
+			SetRotation(RotateAxis.Y, args.FrameNum, 0, 0, 0);
+			if (args.FrameNum > 90)
+				FrontSide ();
+		};
+		Timeline.Start ();
+	}
+
+	public void TurnToFront (uint Delay)
+	{
+		Timeline = new Timeline (180);
+		Timeline.Delay = Delay;
+		Timeline.NewFrame += delegate (object o, NewFrameArgs args) { 
+			SetRotation(RotateAxis.Y, args.FrameNum, 0, 0, 0);
+			if (args.FrameNum > 90)
+				FrontSide ();
+		};
+		Timeline.Start ();
+	}
+	
+	public void TurnToBack (uint Delay)
+	{
+		Timeline = new Timeline (180);
+		Timeline.Delay = Delay;
+		Timeline.NewFrame += delegate (object o, NewFrameArgs args) { 
+			SetRotation(RotateAxis.Y, args.FrameNum, 0, 0, 0);
+			if (args.FrameNum > 90)
+				FrontSide ();
+		};
+		Timeline.Start ();
 	}
 
 }
 
-public class Deck {
+public class Deck
+{
 
 	private Card [] Cards;
-	private int j;
+	private int CardPointer;
 
-	public Deck () {
+	public Deck ()
+	{
 		Reset ();
 	}
 
-	public Card Draw () {
-		Card Card = Cards [j];
-		Cards [j] = null;
-		j++;
-		return Card;
+	public void Reset ()
+	{
+		Cards = new Card [30];
+		CardPointer = -1;
+		int i = 0;
+		while (i < Cards.Length)
+		{
+			for (int k = 0; k < 6; k++)
+			{
+				Cards [i] = new Card (k);
+				i++;
+			}
+		}
+		Shuffle ();
 	}
 
-	public void Reset () {
-		Cards = new Card [30];
-		Random r = new Random (Environment.TickCount);
-		j = 0;
-		for (int i = 0; i < 30; i++)
-			Cards [i] = new Card (r.Next (6));
+	public void Shuffle ()
+	{
+		Random r = new Random ();
+		int first, second;
+		Card tmp;
+		for (int i = 0; i < 1000; i++)
+		{
+			first = r.Next (Cards.Length);
+			second = r.Next (Cards.Length);
+			tmp = Cards [first];
+			Cards [first] = Cards [second]; 
+			Cards [second] = tmp;
+		}
+	}
+
+	public Card Draw ()
+	{
+		return Cards [++CardPointer];
 	}
 
 }
 
-public class Hand {
+public class Hand
+{
 
-	private Card [] Cards;
+	public Card [] Cards;
 
-	public Hand (Card a, Card b, Card c, Card d, Card e) {
+	public Hand (Card a, Card b, Card c, Card d, Card e)
+	{
 		Cards = new Card [5];
 		Cards [0] = a; Cards [1] = b; Cards [2] = c; Cards [3] = d; Cards [4] = e;
 	}
 
-	public void Replace (int Position, Card Card) {
+	public void Replace (int Position, Card Card)
+	{
 		Cards [Position] = Card;
 	}
 
-	public Card GetCard (int Position) {
+	public Card GetCard (int Position)
+	{
 		return Cards [Position];
 	}
 
-	public int NumberOfCardsSelected () {
+	public int NumberOfCardsSelected ()
+	{
 		int j = 0;
-		for (int i = 0; i < 5; i++) {
-			if (Cards [i].Selected)
+		foreach (Card Card in Cards)
+			if (Card.Selected)
 				j++;
-		}
 		return j;
 	}
 
 }
 
-public class Stack {
+public class Stack
+{
 
 	private int Amount;  
 
-	public Stack () {
-		Amount = 100;
+	public Stack ()
+	{
+		Amount = 1000;
 	}
 
-	public void Increase (int amount) {
-		Amount += amount;
+	public void Increase (int i)
+	{
+		Amount += i;
 	}
 
-	public void Decrease (int amount) {
-		Amount -= amount;
+	public void Decrease (int i)
+	{
+		Amount -= i;
 	}
 
-	public int GetAmount () {
+	public int GetAmount ()
+	{
 		return Amount;
 	}
 
 }
 
-public class StepButton : Texture {
+public class Coin : Texture
+{
+	public Coin ()
+	{
+		SetSize (50, 50);
+		SetFromFile ("Pixmaps/Coin.png");
+		SetPosition (35, 405);
+	}
+}
+
+public class StepButton : Texture
+{
 
 	public int State;
 
-	public StepButton () {
+	public StepButton ()
+	{
 		SetSize (132, 61);
 		SetPosition (635, 400);
 		HoldState ();
 		Reactive = true;
 	}
-	
-	public void HoldState () {
+
+	public void HoldState ()
+	{
 			State = 0;
 			SetFromFile ("Pixmaps/Button-Hold.png");
 	}
 
-	public void DrawState () {
+	public void SwapState ()
+	{
 			State = 0;
-			SetFromFile ("Pixmaps/Button-Draw.png");
+			SetFromFile ("Pixmaps/Button-Swap.png");
 	}
-	
+
 }
 
-public class BetButton : Texture {
-
-	public int Presses;
-
-	public BetButton () {
-		Presses = 0;
+public class BetButton : Texture
+{
+	public BetButton ()
+	{
 		SetSize (132, 61);
 		SetPosition (485, 400);
 		SetFromFile ("Pixmaps/Button-Raise.png");
 		Reactive = true;
-		ButtonPressEvent += Pressed;
 	}
-	
-	public void Pressed (object o, ButtonPressEventArgs args) {
-		Presses++;
-	}
+}
 
+public class DealButton : Texture
+{
+	public DealButton ()
+	{
+		SetSize (132, 61);
+		SetPosition (635, 400);
+		SetFromFile ("Pixmaps/Button-Deal.png");
+		Reactive = true;
+		Opacity = 0;
+	}
 }

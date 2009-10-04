@@ -1,5 +1,5 @@
 
   Deal requires Mono 2.4 or later.
 
-  Compile: `gmcs Deal.cs -pkg:clutter-sharp -out:Deal.exe`
-  Run:     `mono Deal.cs`
+  Compile: `gmcs Deal.cs -pkg:clutter-sharp -pkg:glib-sharp-2.0 -out:Deal.exe`
+  Run:     `mono Deal.exe`

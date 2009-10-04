@@ -1,0 +1,13 @@
+
+[Desktop Entry]
+Name=Deal!
+Comment=A very simple but fun card game
+Version=0.1
+Exec=mono /usr/bin/Deal.exe
+Terminal=false
+Type=Application
+Categories=Game
+StartupNotify=true
+Icon=applications-games
+GenericName=Deal!
+Name[en_GB]=Deal.desktop
